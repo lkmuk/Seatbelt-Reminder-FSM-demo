@@ -1,0 +1,46 @@
+switch (stateSeat1){
+  case IDLE: // aka state 0
+	if (isSeated){
+		ACTION_WHEN_ENTERING_SEATED_NO_BELT;
+		stateSeat1 = SEAT_NO_BELT;  	// 0-->1
+	}
+	break;
+  case SEAT_NO_BELT: // aka state 1
+	if (elapsedTime_until_BucklingUp > delayBeforeWarning) {
+		ACTION_WHEN_ENTERING_WARNING;
+		stateSeat1 = WARNING;   	// 1-->3
+		break;
+	}
+	if (isBelted){  
+		stateSeat1 = SEAT_WITH_BELT;	// 1-->2  
+		break;
+	}
+	if (!isSeated){ 
+		stateSeat1 = IDLE;		// 1-->0
+	}
+	elapsedTime_until_BucklingUp++; 	// 1-->1
+	break;
+  case SEAT_WITH_BELT: // aka state 2
+	if (!isBelted){
+		ACTION_WHEN_ENTERING_SEATED_NO_BELT;
+		stateSeat1 = SEAT_NO_BELT;      // 2-->1
+		break;
+	}
+	if (!isSeated){ // Just in case
+		stateSeat1 = IDLE;              // 2-->0
+		break;
+	}
+	break;
+  case WARNING: // aka state 3
+	if (isBelted){
+		ACTION_WHEN_LEAVING_WARNING; 
+		stateSeat1 = SEAT_WITH_BELT;    // 3-->2
+		break;
+	}
+	if (!isSeated){
+		ACTION_WHEN_LEAVING_WARNING;
+		stateSeat1 = IDLE;              // 3-->0
+		break;
+	}
+	break;
+} 

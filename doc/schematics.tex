@@ -1,0 +1,68 @@
+\documentclass[11pt]{standalone}
+\usepackage{tikz}
+\usepackage{fontenc}
+	\usepackage{palatino}
+\usepackage[hidelinks]{hyperref}
+\usetikzlibrary{positioning}
+\usepackage{circuitikz}
+\usepackage{siunitx}
+\begin{document}
+\begin{circuitikz}[font={\bfseries\fontfamily{qag}\selectfont}]
+  \def \xSepBoardToConnector {3}
+  \def \yLED {12cm}
+  \node[
+  	rectangle, minimum width = 8 cm, minimum height = 19 cm,
+  	anchor = north east, fill=cyan!10,draw=black
+  	] at (-\xSepBoardToConnector,6) (board) {};
+	  \node[below = of board.north, 	text width = 10cm, align=center,] 
+	  		{\huge Nucleo-F103RB\\ \normalsize Development Board};
+  \node[
+  	rectangle, draw, 
+	  minimum width = 3cm, minimum height = 3cm,
+  ] (MCU) at (board.center)  {MCU};
+  
+  \def \myPushPull(#1){
+  	\draw (0,0) 
+  	to ++(1,0)
+  	to[R=220~\si{\ohm}] ++(0,2)
+   	to[C=10 nF] ++(0,2)
+   	to 	++(1,0)
+   	to [push button={#1}]++(0,-4)
+   	to[short,-o] (0,0);
+   	
+   \draw  (1.5,4) to[short,*-] ++(0,0.5) node[above] {3.3~V};
+   \draw  (1,0) to[short,*-, R=5 k$\Omega$] ++(0,-2) node[ground]{};
+   }
+	  \myPushPull(SeatSensor)
+	  \draw[-triangle 60](0,0) -- node[pos = 0, above left] {to MCU PA6} 
+	  	++(-\xSepBoardToConnector,0) 
+	  	--++(-1cm,0) |-(MCU.30);
+  \begin{scope}[yshift=-8cm]
+  	\myPushPull(SeatSensor)
+  	\draw[-triangle 60](0,0) -- node[pos = 0, above left] {to MCU PA7} 
+  	++(-\xSepBoardToConnector,0) 
+  	--++(-1cm,0) |-(MCU.east);
+  \end{scope}
+	\draw
+		(-\xSepBoardToConnector,-\yLED) to[R={330~\si{\ohm}},f_={\mbox{PA4}}]
+		++(2.5,0) to [led,a={warning indicator}] 
+		++(4.3,0) node[ground]{};		
+	\draw [-triangle 60]
+		(MCU.south) |- (-\xSepBoardToConnector,-\yLED);
+	
+	\node[
+		circle, minimum size=1cm, draw=black,fill=white,
+		above left = 1cm and 1cm of MCU.north, 
+		label={\small HSE CLK @ 8 MHz}
+	](HSE Clock) {};
+	\draw (HSE Clock.center) -- ++(2mm,0);
+	\draw (HSE Clock.center) -- ++(0,3mm);
+			
+	\draw[-triangle 60] (HSE Clock.east) -| (MCU.north);
+	
+\end{circuitikz}
+
+	
+	
+\end{document}
+

@@ -1,0 +1,2 @@
+all header files are copied from STM32CubeIDE
+the .inc file is for the startup code.

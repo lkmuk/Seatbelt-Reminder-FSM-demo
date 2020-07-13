@@ -1,0 +1,19 @@
+*.o
+*.elf
+
+# debug aids
+local
+
+archives
+
+# auxiliary files when compiling the documentation
+*.xml
+*.bbl
+*.gz
+*.log
+*.aux
+*.blg
+*.toc
+*.nav
+*.out
+*.bcf

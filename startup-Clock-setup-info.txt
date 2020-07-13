@@ -1,0 +1,18 @@
+SYSCLK source: PLL 
+PLL configuration:
+* driven by HSE which has 8 MHz quartz (i.e. PLLSRC = 1,  <encoded val> = 1)
+* PLL prescaler = 1/2, (i.e. PLLXTPRE = 1 <encoded val> = 1)
+* PLL frequency multipler (i.e. PLLMUL) = 2 <encoded val> = 0
+
+* resulting in: 
+    f_SYSCLK = 8 MHz / 2 * 2 = 8 MHz    
+    (not to exceed 72 MHz)
+    (not exceeding 24 MHz so no need for flash wait state(s) )
+    (also no need to prescale other APB1,2 clocks)
+
+* from f_SYSCLK to f_SysTick_Input 
+    * assume 
+        - HPRE = 1/2 <encoded val = 8> and 
+        - SysTick ClockSource as HCLK prescaled by 1 (as set in the SysTick_Config subroutine)
+    * resulting in:
+        f_SysTick_Input = f_SYSCLK / 2/ 1  = 4 MHz
