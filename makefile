@@ -1,5 +1,5 @@
 default:	app.c
-	arm-none-eabi-gcc -c -mcpu=cortex-m3 -Wall -O3 app.c -o app.o	
+	arm-none-eabi-gcc -c -mcpu=cortex-m3 -Wall -O3 -g app.c -o app.o	
 build: app.o
 	make default
 	arm-none-eabi-as -g STM32F1_vecTable.S -o STM32F1_vecTable.o

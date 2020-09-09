@@ -1,5 +1,9 @@
 #include "include/stm32f103xb.h"
 
+
+# define isDebugging TRUE
+
+
 // manual timing calculation at comile time
     /*
      * assumptions (these are configured in the startup.S and explained in startup-Clock-setup-info.txt):
@@ -38,13 +42,14 @@
             elapsedTime_until_BucklingUp = 1
 // more macros
     #define getState(GPIOx,pinNum) (((GPIOx->IDR)>>pinNum)& 1U)==1U
+
         
     enum SeatBeltReminderFsmStates{IDLE,SEAT_NO_BELT, SEAT_WITH_BELT, WARNING};    
     
 // global variable (assuming only modified by the SysTick Handler)
-    static enum SeatBeltReminderFsmStates stateSeat1 = IDLE; // i.e. initial state
+    volatile enum SeatBeltReminderFsmStates stateSeat1 = IDLE; // i.e. initial state
     	// note: benefit of initial state being numerically 0: save (some) flash space
-    static uint32_t elapsedTime_until_BucklingUp;  //actually 
+    volatile uint32_t elapsedTime_until_BucklingUp;  //actually 
         /* time in state SEAT_NO_BELT  [in unit time of SysTick IRQ period]
          * (for visualization, we could keep counting it in State 3*/
 
@@ -52,10 +57,13 @@
     int main(void); // only for startup configuration, empty while-loop
     void configIO(void);
     void SysTick_Handler(void);
+    void USART2_IRQHandler(void);
+    void configUSART2(void);
 
 // definitions
 int main(void){
     configIO();
+    configUSART2(); // 
     (void) SysTick_Config(SysTimerInterval_ticks); // macro defined in "core_cm3.h"
     while (1);/*better alternative: inline with wfi */
     return 0;
@@ -123,11 +131,14 @@ void SysTick_Handler (void){  //ISR, see STM32F1_vecTable.S
             }
             break;
     } 
+
+    // USART2_IRQHandler(); //manual trigger
 }
 
 void configIO(void){ // change me with HAL if you want to!
     // RCC control
     RCC->APB2ENR |= RCC_APB2ENR_IOPAEN; // enable GPIO Port A
+    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;// enable USART2
     
     // configure the pins for the seat and belt sensor inputs AND the OutputSensor
         // clear the value for the 3 pins involved
@@ -140,4 +151,51 @@ void configIO(void){ // change me with HAL if you want to!
             GPIO_CRL_CNF6_0|  // PA6 (seat detector input as floating input, externally pulled down)
             GPIO_CRL_CNF7_0  // PA7 (belt detector input as floating input, externally pulled down)
          );
+
+    // configure the USART2 Pins 
+         // from Blinky project of KEIL v5
+        RCC->APB2ENR |=  (   1ul <<  0);         /* enable clock Alternate Function */
+        // AFIO->MAPR   &= ~(   1ul <<  3);         /* clear USART2 remap (see RM0008, p.180)              */
+         
+        // Tx pin as PA2, according to (MCU datasheet [13587] p.29)
+        GPIOA->CRL &= ~(GPIO_CRL_CNF2 | (GPIO_CRL_MODE2));
+         // has to be AF Push-Pull according to RM0008 p.166
+         // corresponding to CNF = 0b10 (RM0008, Table 20); 
+         // let's cap output speed at 2 MHz, i.e. MODE = 0b10 (RM0008, Table 21), 
+        GPIOA->CRL |= (GPIO_CRL_CNF2_1 | GPIO_CRL_MODE2_1);
+}
+
+
+void configUSART2(void){
+    // enable chip, enable Tx, 8 bit word, no parity, enable TxEmpty Interrupt
+	// USART2->CR1 = ((USART_CR1_UE|USART_CR1_TE|USART_CR1_TXEIE) & (~USART_CR1_M) & (~USART_CR1_PCE));
+
+    // modified from RM0008 p. 792 (all CR 0x0 on reset)
+    USART2->CR1 |=  USART_CR1_UE; 
+    USART2->CR1 &= ~USART_CR1_M;     // 8 bit per word
+    USART2->CR1 &= ~USART_CR1_PCE;   // no parity bit
+	USART2->CR2 &= ~USART_CR2_STOP; // 00 = 1 stop bit 
+    // Baud Rate Reg: 9600 Bit/s (9592.33 actually --- 4 MHz @PCLK1 / 16/ (26+ 1/16)
+	USART2->BRR = ((26<<USART_BRR_DIV_Mantissa_Pos)|1);  
+    // enable Tx (which starts off by sending an idle frame)
+    USART2->CR1 |= USART_CR1_TE;
+    // enable Interrupt gen on Tx Data Reg being empty
+    USART2->CR1 |= USART_CR1_TXEIE;
+
+    // not to forget
+     __NVIC_EnableIRQ(38);
+}
+
+void USART2_IRQHandler(void){
+	/*So far only for transmitting the current state
+	  (encoding 0 to 3 only) as char with single buffer frame,
+	  as such this handler shall only be raised by TxEmpty event
+	*/
+
+	// handling for TxEmpty event (in our case, put new stateSeat1 in DR)
+	if ((USART2->SR & USART_SR_TXE_Msk)  == USART_SR_TXE_Msk) {
+		// ascii code ---> '0', '1', ... = 48, 49, ...
+		USART2->DR = (uint8_t) (stateSeat1 + 48U);
+		// (no \n  because of the single frame)
+	}
 }
